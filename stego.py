@@ -1,0 +1,75 @@
+import numpy as np
+from PIL import Image
+import os
+
+class Steganography:
+    @staticmethod
+    def encode_image(input_path, message, output_path):
+        try:
+            img = Image.open(input_path)
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            img_array = np.array(img)
+            secret_message = message + "_END_"
+            binary_message = ''.join(format(ord(char), '08b') for char in secret_message)
+            
+            flat_array = img_array.flatten()
+            if len(binary_message) > len(flat_array):
+                return False
+
+            for i in range(len(binary_message)):
+                bit = int(binary_message[i])
+                flat_array[i] = (flat_array[i] & 254) | bit
+
+            encoded_array = flat_array.reshape(img_array.shape)
+            encoded_img = Image.fromarray(encoded_array.astype('uint8'))
+            encoded_img.save(output_path)
+            return True
+        except Exception as e:
+            print(f"Error during encoding: {e}")
+            return False
+
+    @staticmethod
+    def decode_image(input_path):
+        try:
+            img = Image.open(input_path)
+            img_array = np.array(img)
+            flat_array = img_array.flatten()
+            
+            binary_data = ""
+            for i in range(len(flat_array)):
+                binary_data += str(flat_array[i] & 1)
+                
+                if len(binary_data) >= 8 and len(binary_data) % 8 == 0:
+                    all_chars = ""
+                    for j in range(0, len(binary_data), 8):
+                        byte = binary_data[j:j+8]
+                        all_chars += chr(int(byte, 2))
+                    
+                    if "_END_" in all_chars:
+                        return all_chars.split("_END_")[0]
+            return "No message found."
+        except Exception as e:
+            print(f"Error during decoding: {e}")
+            return None
+
+if __name__ == "__main__":
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    input_file = os.path.join(current_dir, "lena.png")
+    output_file = os.path.join(current_dir, "lena_final.png")
+    message_to_hide = "muntaser Success for Doctor"
+
+    print("--- Starting Steganography Process ---")
+    
+    if Steganography.encode_image(input_file, message_to_hide, output_file):
+        print("[1] Encoding: Successfully hidden the message!")
+        
+        print("[2] Decoding: Reading from 'lena_final.png'...")
+        hidden_msg = Steganography.decode_image(output_file)
+        
+        print("---------------------------------------")
+        print(f"DECODED MESSAGE: {hidden_msg}")
+        print("---------------------------------------")
+    else:
+        print("Failed! Make sure 'lena.png' is in the folder.")
+        
